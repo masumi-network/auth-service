@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from src.api.routes import router as api_router
 from src.config import settings
 from src.db import init_pool, close_pool, run_migrations
 
@@ -22,6 +23,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Masumi Auth Service", lifespan=lifespan)
+
+app.include_router(api_router)
 
 
 @app.get("/health")
