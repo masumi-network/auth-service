@@ -147,18 +147,18 @@
     },
 
     {
-      "type": "arrow", "id": "arrow_auth_yes", "x": 722, "y": 130, "width": 108, "height": 0,
+      "type": "arrow", "id": "arrow_auth_yes", "x": 722, "y": 140, "width": 106, "height": 15,
       "strokeColor": "#047857", "backgroundColor": "transparent",
       "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 0, "opacity": 100,
       "angle": 0, "seed": 10060, "version": 1, "versionNonce": 10061,
       "isDeleted": false, "groupIds": [], "boundElements": null, "link": null, "locked": false,
-      "points": [[0, 0], [108, 0]],
-      "startBinding": {"elementId": "auth_node", "focus": -0.5, "gap": 2},
+      "points": [[0, 0], [106, 15]],
+      "startBinding": {"elementId": "auth_node", "focus": -0.3, "gap": 2},
       "endBinding": {"elementId": "result_auth", "focus": 0, "gap": 2},
       "startArrowhead": null, "endArrowhead": "arrow"
     },
     {
-      "type": "text", "id": "arrow_yes_label", "x": 740, "y": 112, "width": 70, "height": 16,
+      "type": "text", "id": "arrow_yes_label", "x": 740, "y": 122, "width": 70, "height": 16,
       "text": "found in DB",
       "originalText": "found in DB",
       "fontSize": 11, "fontFamily": 3, "textAlign": "center", "verticalAlign": "top",
@@ -202,18 +202,18 @@
     },
 
     {
-      "type": "arrow", "id": "arrow_auth_no", "x": 722, "y": 185, "width": 108, "height": 0,
+      "type": "arrow", "id": "arrow_auth_no", "x": 722, "y": 180, "width": 106, "height": 102,
       "strokeColor": "#c2410c", "backgroundColor": "transparent",
       "fillStyle": "solid", "strokeWidth": 2, "strokeStyle": "solid", "roughness": 0, "opacity": 100,
       "angle": 0, "seed": 10080, "version": 1, "versionNonce": 10081,
       "isDeleted": false, "groupIds": [], "boundElements": null, "link": null, "locked": false,
-      "points": [[0, 0], [108, 0]],
-      "startBinding": {"elementId": "auth_node", "focus": 0.5, "gap": 2},
+      "points": [[0, 0], [50, 0], [50, 102], [106, 102]],
+      "startBinding": {"elementId": "auth_node", "focus": 0.4, "gap": 2},
       "endBinding": {"elementId": "result_unauth", "focus": 0, "gap": 2},
       "startArrowhead": null, "endArrowhead": "arrow"
     },
     {
-      "type": "text", "id": "arrow_no_label", "x": 735, "y": 190, "width": 80, "height": 16,
+      "type": "text", "id": "arrow_no_label", "x": 740, "y": 210, "width": 80, "height": 16,
       "text": "not found",
       "originalText": "not found",
       "fontSize": 11, "fontFamily": 3, "textAlign": "center", "verticalAlign": "top",
