@@ -6,6 +6,12 @@ Centralized Sokosumi OAuth and identity management for Masumi agents. Instead of
 
 ## How it works
 
+![Auth Flow Diagram](docs/auth-flow.png)
+
+*[Open in Excalidraw](docs/auth-flow.excalidraw) for an editable version.*
+
+### Detailed flow
+
 ```
 User contacts agent          Agent                      Auth Service              Sokosumi
      |                         |                            |                       |
