@@ -47,94 +47,115 @@ User contacts agent          Agent                      Auth Service            
 
 The user authenticates **once per channel**. After that, the auth service stores the token and returns it on every lookup. Token refresh is handled transparently by the auth service.
 
-## Integrating your agent
+## Connecting a new agent (step-by-step)
 
-### 1. Register your agent
+Follow these steps to connect any agent — in any language, on any platform — to the auth service.
 
-Ask the auth-service admin to create an agent row in the database:
+### Step 1: Generate an API key
+
+Generate a random, URL-safe API key for your agent. Example using Python:
+
+```bash
+python3 -c "import secrets; print('myagent_' + secrets.token_urlsafe(32))"
+# Output: myagent_Ab3xK9mP7qR2sT5vW8yZ...
+```
+
+Save this key somewhere safe. You will need it in steps 2 and 4.
+
+### Step 2: Register your agent in the auth-service database
+
+Ask the auth-service admin to run this SQL against the auth-service Postgres:
 
 ```sql
 INSERT INTO agents (agent_id, api_key_hash, display_name)
 VALUES (
-    'your_agent',
-    encode(sha256('your_secret_api_key'::bytea), 'hex'),
-    'Your Agent Name'
+    'myagent',
+    encode(sha256('myagent_Ab3xK9mP7qR2sT5vW8yZ...'::bytea), 'hex'),
+    'My Agent'
 );
 ```
 
-Save the API key (`your_secret_api_key`) — the database only stores the hash.
+Replace `myagent` with your agent's ID and the key string with your actual key from Step 1. The database stores only the SHA-256 hash — the plaintext key is never persisted.
 
-### 2. Call the lookup endpoint
-
-When a user contacts your agent, call the lookup endpoint to check if they're authenticated:
+### Step 3: Verify your key works
 
 ```bash
-curl -H "x-api-key: your_secret_api_key" \
-  "https://masumi-auth-service-preprod.up.railway.app/api/v1/lookup?channel=telegram&channel_id=12345"
+curl -H "x-api-key: myagent_Ab3xK9mP7qR2sT5vW8yZ..." \
+  "https://masumi-auth-service-production.up.railway.app/api/v1/lookup?channel=test&channel_id=test123"
 ```
 
-**Response when user is NOT authenticated:**
+Expected response (user doesn't exist yet, so `authenticated: false`):
 
 ```json
 {
   "authenticated": false,
-  "sokosumi_user_id": null,
-  "access_token": null,
-  "workspace_type": null,
-  "default_org_slug": null,
-  "user": null,
-  "oauth_url": "https://masumi-auth-service-preprod.up.railway.app/oauth/start?channel=telegram&channel_id=12345&agent_id=your_agent"
+  "oauth_url": "https://masumi-auth-service-production.up.railway.app/oauth/start?channel=test&channel_id=test123&agent_id=myagent"
 }
 ```
 
-Show the `oauth_url` to the user so they can connect their Sokosumi account.
+If you get `401`, your key doesn't match the hash in the database. Re-check Step 2.
 
-**Response when user IS authenticated:**
+### Step 4: Add the auth check to your agent code
 
-```json
-{
-  "authenticated": true,
-  "sokosumi_user_id": "soko_abc123",
-  "access_token": "eyJhbGciOiJIUzI1NiIs...",
-  "workspace_type": "personal",
-  "default_org_slug": null,
-  "user": {
-    "name": "Alice",
-    "email": "alice@example.com",
-    "image_url": null
-  },
-  "oauth_url": null
-}
-```
-
-Use the `access_token` to make Sokosumi API calls on behalf of the user. The auth service refreshes expired tokens automatically — the token you receive is always current.
-
-### 3. Handle the response in your code
+In your agent's message handler, before processing any user message, call the lookup endpoint:
 
 ```python
 import httpx
 
-AUTH_SERVICE_URL = "https://masumi-auth-service-preprod.up.railway.app"
-API_KEY = "your_secret_api_key"
+AUTH_SERVICE_URL = "https://masumi-auth-service-production.up.railway.app"
+API_KEY = "myagent_Ab3xK9mP7qR2sT5vW8yZ..."  # from Step 1
 
-async def check_user(channel: str, channel_id: str):
+async def handle_message(channel: str, channel_id: str, message: str):
+    """Called when a user sends your agent a message."""
+    
+    # 1. Check if user is authenticated
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(
             f"{AUTH_SERVICE_URL}/api/v1/lookup",
             headers={"x-api-key": API_KEY},
             params={"channel": channel, "channel_id": channel_id},
         )
-        data = resp.json()
+        auth = resp.json()
 
-    if data["authenticated"]:
-        # User is connected — proceed with their access_token
-        token = data["access_token"]
-        user_name = data["user"]["name"]
-        print(f"Hello {user_name}!")
-    else:
-        # User needs to connect — show them the link
-        print(f"Please connect: {data['oauth_url']}")
+    # 2. Handle unauthenticated users
+    if not auth["authenticated"]:
+        return f"Please connect your Sokosumi account first: {auth['oauth_url']}"
+
+    # 3. Proceed normally — user is authenticated
+    sokosumi_user_id = auth["sokosumi_user_id"]
+    access_token = auth["access_token"]  # fresh Sokosumi token, ready to use
+    user_name = auth["user"]["name"]
+    
+    return f"Hello {user_name}! Processing: {message}"
 ```
+
+The `channel` and `channel_id` parameters identify the user on whatever platform your agent runs on:
+
+| If your agent runs on... | `channel` | `channel_id` |
+|---|---|---|
+| Telegram | `"telegram"` | Telegram user ID (e.g., `"308759795"`) |
+| Email | `"email"` | Email address (e.g., `"alice@example.com"`) |
+| Discord | `"discord"` | Discord user ID |
+| Slack | `"slack"` | Slack user ID |
+| Web app | `"web"` | Session ID or user ID from your app |
+| Sokosumi task board | `"sokosumi"` | Sokosumi user ID from `X-Sokosumi-User-Id` header |
+
+### Step 5: That's it
+
+The auth service handles everything else:
+- **First-time users** get an OAuth link. They click it, log in to Sokosumi, and return to a confirmation page. The auth service stores their token and links their channel identity.
+- **Returning users** are found instantly by `(channel, channel_id)` lookup. The auth service returns a fresh `access_token` (refresh is handled server-side).
+- **Cross-channel linking** happens automatically: when a user authenticates via any channel, their email from the Sokosumi profile is also linked. So if they later contact a different agent via email, they're already authenticated.
+
+### Quick checklist
+
+- [ ] Generated an API key (Step 1)
+- [ ] Agent row seeded in auth-service DB (Step 2)
+- [ ] Verified the key works with curl (Step 3)
+- [ ] Added auth check to your message handler (Step 4)
+- [ ] Stored `AUTH_SERVICE_URL` and your API key as env vars (not hardcoded)
+
+---
 
 ## API reference
 
